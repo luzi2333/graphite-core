@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 钢环 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#7d848a"
+        android:strokeWidth="3.5"
+        android:pathData="M54,54m-30,0a30,30 0 1,0 60,0a30,30 0 1,0 -60,0" />
+
+    <!-- 3x3 石墨/钢板阵列 -->
+    <path
+        android:fillColor="#6a6e66"
+        android:pathData="M33,33h12v12h-12z M63,33h12v12h-12z M33,48h12v12h-12z M63,48h12v12h-12z M33,63h12v12h-12z M63,63h12v12h-12z M48,63h12v12h-12z" />
+    <path
+        android:fillColor="#7c8078"
+        android:pathData="M48,33h12v12h-12z" />
+    <!-- 中间那块烧热的 -->
+    <path
+        android:fillColor="#c4622a"
+        android:pathData="M48,48h12v12h-12z" />
+</vector>
