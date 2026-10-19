@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>石墨芯 · GRAPHITE CORE</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="stage"></canvas>
+
+<aside class="panel" id="panel">
+  <div class="panel-head">
+    <div class="brand"><b>石墨芯</b><i>GRAPHITE CORE</i></div>
+    <button class="icon-btn" id="collapseBtn" title="收起 / 展开 (H)">−</button>
+  </div>
+
+  <div class="panel-body" id="panelBody">
+
+    <section class="sec">
+      <h3>音频</h3>
+      <div class="row two">
+        <label class="btn file">载入音频<input type="file" id="fileInput" accept="audio/*"></label>
+        <button class="btn" id="captureBtn">捕捉电脑声音</button>
+      </div>
+      <div class="row sub-row">
+        <button class="btn ghost sm" id="demoBtn">演示信号</button>
+        <span class="src" id="srcLabel">演示中</span>
+      </div>
+      <div class="tip">捕捉时选「整个屏幕」，并勾选底部的「分享系统音频」</div>
+      <div class="track" id="trackName">演示信号 · 124 BPM</div>
+      <canvas id="overview" class="overview" title="点击跳转"></canvas>
+      <div class="row play-row">
+        <button class="btn play" id="playBtn">播放</button>
+        <span class="time" id="timeLabel">00:00 / 00:00</span>
+      </div>
+      <div class="ctl"><label>音量</label><input type="range" id="vol" min="0" max="100" step="1"><em id="volVal"></em></div>
+    </section>
+
+    <section class="sec">
+      <h3>跳动</h3>
+      <div class="ctl"><label>幅度</label><input type="range" id="amp" min="0" max="300" step="1"><em id="ampVal"></em></div>
+      <div class="ctl"><label>落差</label><input type="range" id="contrast" min="0" max="200" step="1"><em id="contrastVal"></em></div>
+      <div class="ctl"><label>规律</label><select id="pattern"></select></div>
+      <div class="ctl"><label>灵敏度</label><input type="range" id="sens" min="0.2" max="3" step="0.05"><em id="sensVal"></em></div>
+      <div class="ctl"><label>波速</label><input type="range" id="speed" min="0" max="3" step="0.05"><em id="speedVal"></em></div>
+      <div class="ctl"><label>惯性</label><input type="range" id="inertia" min="0" max="2" step="0.05"><em id="inertiaVal"></em></div>
+    </section>
+
+    <section class="sec">
+      <h3>外观</h3>
+      <div class="ctl"><label>大小</label><input type="range" id="size" min="55" max="125" step="1"><em id="sizeVal"></em></div>
+      <div class="ctl"><label>频段</label><select id="bandMode"><option value="radial">径向（内低外高）</option><option value="sector">环向（扇区分频）</option></select></div>
+      <div class="ctl"><label>配色</label><select id="palette"></select></div>
+    </section>
+
+    <section class="sec">
+      <h3>效果</h3>
+      <div class="checks">
+        <label><input type="checkbox" id="chkMarks">彩色标块</label>
+        <label><input type="checkbox" id="chkHud">数值</label>
+      </div>
+      <button class="btn wide" id="fullBtn">全屏 (F)</button>
+    </section>
+
+  </div>
+</aside>
+
+<div class="hint" id="hint">拖动环绕 · 滚轮缩放 · 拖入音频，或点「捕捉电脑声音」</div>
+<div class="err" id="err"></div>
+<div class="hud" id="hud"></div>
+
+<script>
+/* 先挂错误陷阱：任何一个脚本出错都能在页面上看到，而不是黑屏 */
+window.addEventListener('error', function (e) {
+  var box = document.getElementById('err');
+  if (!box) return;
+  var f = (e.filename || '').split('/').pop();
+  box.textContent = '脚本错误：' + (e.message || '未知') + (f ? '  @ ' + f + ':' + (e.lineno || '?') : '');
+  box.classList.add('on');
+}, true);
+</script>
+
+<script src="js/audio.js"></script>
+<script src="js/lattice.js"></script>
+<script src="js/patterns.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
