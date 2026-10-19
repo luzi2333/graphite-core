@@ -1,0 +1,13 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+app/src/main/assets/
+
+# 签名文件和打包产物，绝对不要提交
+*.jks
+*.keystore
+keystore.properties
+apk/
+*.apk
