@@ -73,6 +73,7 @@
     this.onPeaks = null;
 
     this.displayStream = null;
+    this.micStream = null;
     this.systemSrc = null;
     this.streamActive = false;
     this._stopping = false;
@@ -198,14 +199,26 @@
   AudioEngine.prototype.startSystem = function () {
     var self = this;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-      return Promise.reject(new Error('这个浏览器不支持捕捉系统声音，请用 Chrome 或 Edge'));
+      var mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      return Promise.reject(new Error(mobile
+        ? '手机浏览器不支持抓系统声音，可以点「麦克风」让它听周围的声音'
+        : '这个浏览器不支持捕捉系统声音，请用 Chrome 或 Edge'));
     }
     this._ensureCtx();
     if (this.ctx.state === 'suspended') this.ctx.resume();
 
     var req;
     try {
-      req = navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      /* 尽量把弹窗预置成「整个屏幕 + 分享系统音频」 */
+      req = navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: 'monitor' },
+        audio: { systemAudio: 'include', suppressLocalAudioPlayback: true },
+        systemAudio: 'include',
+        selfBrowserSurface: 'exclude',
+        surfaceSwitching: 'include',
+        monitorTypeSurfaces: 'include',
+        preferCurrentTab: false
+      });
     } catch (e0) {
       return Promise.reject(e0);
     }
@@ -221,6 +234,10 @@
         try { self.displayStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e2) {}
       }
       self.displayStream = stream;
+      if (self.micStream) {
+        try { self.micStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e2) {}
+        self.micStream = null;
+      }
       self.stopFile();
 
       var audioOnly = new MediaStream();
@@ -248,6 +265,54 @@
     });
   };
 
+  /* 麦克风：手机 / 桌面都能用，听周围的声音（包括外放的歌） */
+  AudioEngine.prototype.startMic = function () {
+    var self = this;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      return Promise.reject(new Error('这个浏览器不支持麦克风'));
+    }
+    this._ensureCtx();
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+
+    return navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+    }).then(function (stream) {
+      if (self.displayStream) {
+        try { self.displayStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+        self.displayStream = null;
+      }
+      if (self.micStream) {
+        try { self.micStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e2) {}
+      }
+      self.micStream = stream;
+      self.stopFile();
+
+      try {
+        if (self.systemSrc) self.systemSrc.disconnect();
+        self.systemSrc = self.ctx.createMediaStreamSource(stream);
+        self.systemSrc.connect(self.sysAnalyser);
+      } catch (e3) {
+        throw new Error('麦克风建立失败：' + e3.message);
+      }
+
+      self.analyser = self.sysAnalyser;
+      self.mode = 'mic';
+      self.hasFile = false;
+      self.streamActive = true;
+      self.peaks = null;
+      if (self.onPeaks) self.onPeaks(null, 0);
+
+      var track = stream.getAudioTracks()[0];
+      if (track) {
+        track.addEventListener('ended', function () {
+          if (self._stopping) return;
+          self.stopSystem(false);
+        });
+      }
+      return true;
+    });
+  };
+
   AudioEngine.prototype.stopSystem = function (silent) {
     this._stopping = true;
     if (this.displayStream) {
@@ -256,11 +321,17 @@
       } catch (e) {}
       this.displayStream = null;
     }
+    if (this.micStream) {
+      try {
+        this.micStream.getTracks().forEach(function (t) { t.stop(); });
+      } catch (em) {}
+      this.micStream = null;
+    }
     if (this.systemSrc) {
       try { this.systemSrc.disconnect(); } catch (e2) {}
       this.systemSrc = null;
     }
-    var was = this.mode === 'system';
+    var was = this.mode === 'system' || this.mode === 'mic';
     this.streamActive = false;
     this._stopping = false;
 
@@ -446,7 +517,7 @@
     this.beatNow = false;
 
     var fileLive = this.mode === 'file' && this.el && !this.el.paused && !this.el.ended;
-    var sysLive = this.mode === 'system' && this.streamActive;
+    var sysLive = (this.mode === 'system' || this.mode === 'mic') && this.streamActive;
     this.playing = !!(fileLive || sysLive);
 
     if (this.mode === 'demo') this._synth();

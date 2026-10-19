@@ -81,6 +81,7 @@
         GC.UI.trackName('演示信号 · 124 BPM');
         return;
       }
+      if (audio.mode === 'mic') audio.stopSystem(true);
       audio.startSystem().then(function () {
         GC.UI.trackName('电脑声音 · 正在捕捉');
         if (GC.UI._hideHint) GC.UI._hideHint();
@@ -97,6 +98,32 @@
     useDemo: function () {
       audio.useDemo();
       GC.UI.trackName('演示信号 · 124 BPM');
+    },
+    mic: function () {
+      if (audio.mode === 'mic') {
+        audio.stopSystem(false);
+        return;
+      }
+      if (audio.mode === 'system') audio.stopSystem(true);
+      audio.startMic().then(function () {
+        GC.UI.trackName('麦克风 · 正在监听');
+        if (GC.UI._hideHint) GC.UI._hideHint();
+      }).catch(function (err) {
+        var msg;
+        if (err && err.name === 'NotAllowedError') {
+          msg = '麦克风权限被拒绝，到浏览器地址栏的站点设置里允许麦克风';
+        } else {
+          msg = err && err.message ? err.message : '麦克风打不开';
+        }
+        GC.UI.error(msg);
+      });
+    },
+    pinch: function (f) {
+      if (!(f > 0)) return;
+      var z = state.zoom * f;
+      if (z < 0.45) z = 0.45;
+      if (z > 2.8) z = 2.8;
+      state.zoom = z;
     },
     togglePlay: function () {
       if (audio.mode === 'demo') {

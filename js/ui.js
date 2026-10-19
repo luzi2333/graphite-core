@@ -22,6 +22,7 @@
       collapse: $('collapseBtn'),
       file: $('fileInput'),
       demo: $('demoBtn'),
+      mic: $('micBtn'),
       track: $('trackName'),
       overview: $('overview'),
       play: $('playBtn'),
@@ -159,6 +160,10 @@
       app.useDemo();
     });
 
+    el.mic.addEventListener('click', function () {
+      app.mic();
+    });
+
     el.capture.addEventListener('click', function () {
       app.capture();
     });
@@ -209,20 +214,60 @@
       UI.error('这不是音频文件：' + files[0].name);
     });
 
-    /* ---------- 拖动环绕 ---------- */
+    /* ---------- 拖动环绕 / 双指缩放 ---------- */
 
     var stage = $('stage');
     var drag = null;
+    var pointers = {};
+    var pinchDist = 0;
+
+    function pointerCount() {
+      var n = 0;
+      for (var k in pointers) {
+        if (Object.prototype.hasOwnProperty.call(pointers, k)) n++;
+      }
+      return n;
+    }
+
+    function pinchLength() {
+      var pts = [], k;
+      for (k in pointers) {
+        if (Object.prototype.hasOwnProperty.call(pointers, k)) pts.push(pointers[k]);
+      }
+      if (pts.length < 2) return 0;
+      var dx = pts[0].x - pts[1].x;
+      var dy = pts[0].y - pts[1].y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
 
     stage.addEventListener('pointerdown', function (ev) {
       ev.preventDefault();
-      drag = { x: ev.clientX, y: ev.clientY };
-      stage.classList.add('grabbing');
+      pointers[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
       try { stage.setPointerCapture(ev.pointerId); } catch (e) {}
+
+      if (pointerCount() >= 2) {
+        drag = null;
+        pinchDist = pinchLength();
+        stage.classList.add('grabbing');
+      } else {
+        drag = { x: ev.clientX, y: ev.clientY };
+        stage.classList.add('grabbing');
+      }
       hideHint();
     });
 
     window.addEventListener('pointermove', function (ev) {
+      if (!pointers[ev.pointerId]) return;
+      pointers[ev.pointerId].x = ev.clientX;
+      pointers[ev.pointerId].y = ev.clientY;
+
+      if (pointerCount() >= 2) {
+        var d = pinchLength();
+        if (pinchDist > 0 && d > 0) app.pinch(d / pinchDist);
+        pinchDist = d;
+        return;
+      }
+
       if (!drag) return;
       var dx = ev.clientX - drag.x;
       var dy = ev.clientY - drag.y;
@@ -231,14 +276,24 @@
       app.orbit(dx, dy);
     });
 
-    function endDrag() {
-      if (!drag) return;
-      drag = null;
-      stage.classList.remove('grabbing');
-      app.save();
+    function endPointer(ev) {
+      if (pointers[ev.pointerId]) delete pointers[ev.pointerId];
+      if (pointerCount() < 2) pinchDist = 0;
+
+      if (pointerCount() === 1) {
+        var only = null, k;
+        for (k in pointers) {
+          if (Object.prototype.hasOwnProperty.call(pointers, k)) only = pointers[k];
+        }
+        drag = only ? { x: only.x, y: only.y } : null;
+      } else if (pointerCount() === 0) {
+        drag = null;
+        stage.classList.remove('grabbing');
+        app.save();
+      }
     }
-    window.addEventListener('pointerup', endDrag);
-    window.addEventListener('pointercancel', endDrag);
+    window.addEventListener('pointerup', endPointer);
+    window.addEventListener('pointercancel', endPointer);
 
     /* 滚轮缩放 */
     stage.addEventListener('wheel', function (ev) {
@@ -361,15 +416,23 @@
     if (UI._mode !== mode) {
       UI._mode = mode;
       el.play.disabled = mode !== 'file';
-      el.capture.classList.toggle('on', mode === 'system');
-      el.capture.textContent = mode === 'system' ? '停止捕捉' : '捕捉电脑声音';
+
+      var sysOn = mode === 'system';
+      el.capture.classList.toggle('on', sysOn);
+      el.capture.textContent = sysOn ? '停止捕捉' : '捕捉电脑声音';
+
+      var micOn = mode === 'mic';
+      el.mic.classList.toggle('on', micOn);
+      el.mic.textContent = micOn ? '停止监听' : '麦克风';
+
       if (el.srcLabel) {
-        el.srcLabel.textContent = mode === 'system' ? '系统声音' : (mode === 'file' ? '本地文件' : '演示中');
+        el.srcLabel.textContent = sysOn ? '系统声音'
+          : (micOn ? '麦克风' : (mode === 'file' ? '本地文件' : '演示中'));
       }
     }
 
     var paused = mode === 'demo' || (mode === 'file' && audio.isPaused());
-    var label = mode === 'system' ? '直播中' : (paused ? '播放' : '暂停');
+    var label = (mode === 'system' || mode === 'mic') ? '直播中' : (paused ? '播放' : '暂停');
     if (label !== UI._playLabel) {
       UI._playLabel = label;
       el.play.textContent = label;
